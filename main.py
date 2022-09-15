@@ -9,19 +9,23 @@ import torch
 from torch import nn, optim, Tensor
 from torch_sparse import SparseTensor, matmul
 from torch_geometric.utils import structured_negative_sampling
-from torch_geometric.data import download_url, extract_zip
 from torch_geometric.nn.conv.gcn_conv import gcn_norm
 from torch_geometric.nn.conv import MessagePassing
 from torch_geometric.typing import Adj
 
-# Already Done!
-# url = 'https://files.grouplens.org/datasets/movielens/ml-latest-small.zip'
-# extract_zip(download_url(url, '.'), '.')
 
-# extract_zip("combined_data_1.txt.zip", '.')
-# exit()
+dataset = 'Netflix'
+bgu_cluster = False
+
+# MovieLens mission
 movie_path = './ml-latest-small/movies.csv'
 rating_path = './ml-latest-small/ratings.csv'
+
+if dataset == 'Netflix':
+    movie_path = 'very_new_movie_file.txt'
+    rating_path = 'new_mini_rating_file.txt'
+
+
 
 # load user and movie nodes
 def load_node_csv(path, index_col):
@@ -41,8 +45,8 @@ def load_node_csv(path, index_col):
 
 user_mapping = load_node_csv(rating_path, index_col='userId')
 movie_mapping = load_node_csv(movie_path, index_col='movieId')
-# print("user_mapping: ", user_mapping)
-# print("movie_mapping: ", movie_mapping)
+
+
 # load edges between users and movies
 def load_edge_csv(path, src_index_col, src_mapping, dst_index_col, dst_mapping, link_index_col, rating_threshold=4):
     """Loads csv containing edges between users and items
@@ -84,7 +88,7 @@ edge_index = load_edge_csv(
     link_index_col='rating',
     rating_threshold=4,
 )
-print("edge_index: ", edge_index.shape)
+
 # split the edges of the graph using a 80/10/10 train/validation/test split
 num_users, num_movies = len(user_mapping), len(movie_mapping)
 num_interactions = edge_index.shape[1]
@@ -98,8 +102,7 @@ val_indices, test_indices = train_test_split(
 train_edge_index = edge_index[:, train_indices]
 val_edge_index = edge_index[:, val_indices]
 test_edge_index = edge_index[:, test_indices]
-print("train_edge_index: ", train_edge_index.shape)
-print("test_edge_index: ", test_edge_index.shape)
+
 
 # convert edge indices into Sparse Tensors: https://pytorch-geometric.readthedocs.io/en/latest/notes/sparse_tensor.html
 train_sparse_edge_index = SparseTensor(row=train_edge_index[0], col=train_edge_index[1], sparse_sizes=(
@@ -109,9 +112,6 @@ val_sparse_edge_index = SparseTensor(row=val_edge_index[0], col=val_edge_index[1
 test_sparse_edge_index = SparseTensor(row=test_edge_index[0], col=test_edge_index[1], sparse_sizes=(
     num_users + num_movies, num_users + num_movies))
 
-print(train_sparse_edge_index)
-print(test_sparse_edge_index)
-exit()
 # function which random samples a mini-batch of positive and negative samples
 def sample_mini_batch(batch_size, edge_index):
     """Randomly samples indices of a minibatch given an adjacency matrix
@@ -123,7 +123,11 @@ def sample_mini_batch(batch_size, edge_index):
     Returns:
         tuple: user indices, positive item indices, negative item indices
     """
-    edges = structured_negative_sampling(edge_index)
+    node_number = None
+    if dataset == 'Netflix':
+        node_number = 4498
+
+    edges = structured_negative_sampling(edge_index, node_number) # return (i,j,k)
     edges = torch.stack(edges, dim=0)
     indices = random.choices(
         [i for i in range(edges[0].shape[0])], k=batch_size)
@@ -215,15 +219,25 @@ def bpr_loss(users_emb_final, users_emb_0, pos_items_emb_final, pos_items_emb_0,
     Returns:
         torch.Tensor: scalar bpr loss value
     """
+
+
     reg_loss = lambda_val * (users_emb_0.norm(2).pow(2) +
                              pos_items_emb_0.norm(2).pow(2) +
                              neg_items_emb_0.norm(2).pow(2)) # L2 loss
 
-    pos_scores = torch.mul(users_emb_final, pos_items_emb_final)
-    pos_scores = torch.sum(pos_scores, dim=-1) # predicted scores of positive samples
-    neg_scores = torch.mul(users_emb_final, neg_items_emb_final)
-    neg_scores = torch.sum(neg_scores, dim=-1) # predicted scores of negative samples
 
+    pos_scores = torch.mul(users_emb_final, pos_items_emb_final)
+    neg_scores = torch.mul(users_emb_final, neg_items_emb_final)
+    pos_scores = torch.sum(pos_scores, dim=-1)  # predicted scores of positive samples
+    neg_scores = torch.sum(neg_scores, dim=-1)  # predicted scores of negative samples
+
+    # Alternative version:
+    # pos_scores = users_emb_final @ pos_items_emb_final.T
+    # pos_scores = torch.diag(pos_scores, 0)
+    # neg_scores = users_emb_final @ neg_items_emb_final.T
+    # neg_scores = torch.diag(neg_scores, 0)
+
+    # loss = -torch.mean(pos_scores - neg_scores) + reg_loss
     loss = -torch.mean(torch.nn.functional.softplus(pos_scores - neg_scores)) + reg_loss
 
     return loss
@@ -313,6 +327,7 @@ def get_metrics(model, edge_index, exclude_edge_indices, k):
     user_embedding = model.users_emb.weight
     item_embedding = model.items_emb.weight
 
+
     # get ratings between every user and item - shape is num users x num movies
     rating = torch.matmul(user_embedding, item_embedding.T)
 
@@ -370,36 +385,34 @@ def evaluation(model, edge_index, sparse_edge_index, exclude_edge_indices, k, la
         tuple: bpr loss, recall @ k, precision @ k, ndcg @ k
     """
     # get embeddings
-    users_emb_final, users_emb_0, items_emb_final, items_emb_0 = model.forward(
-        sparse_edge_index)
-    edges = structured_negative_sampling(
-        edge_index, contains_neg_self_loops=False)
+    node_number = None
+    if dataset == 'Netflix':
+        node_number = 4498
+    users_emb_final, users_emb_0, items_emb_final, items_emb_0 = model.forward(sparse_edge_index)
+    edges = structured_negative_sampling(edge_index, contains_neg_self_loops=False, num_nodes=node_number)
     user_indices, pos_item_indices, neg_item_indices = edges[0], edges[1], edges[2]
     users_emb_final, users_emb_0 = users_emb_final[user_indices], users_emb_0[user_indices]
-    pos_items_emb_final, pos_items_emb_0 = items_emb_final[
-        pos_item_indices], items_emb_0[pos_item_indices]
-    neg_items_emb_final, neg_items_emb_0 = items_emb_final[
-        neg_item_indices], items_emb_0[neg_item_indices]
+    pos_items_emb_final, pos_items_emb_0 = items_emb_final[pos_item_indices], items_emb_0[pos_item_indices]
+    neg_items_emb_final, neg_items_emb_0 = items_emb_final[neg_item_indices], items_emb_0[neg_item_indices]
 
     loss = bpr_loss(users_emb_final, users_emb_0, pos_items_emb_final, pos_items_emb_0,
                     neg_items_emb_final, neg_items_emb_0, lambda_val).item()
-
     recall, precision, ndcg = get_metrics(
         model, edge_index, exclude_edge_indices, k)
-
     return loss, recall, precision, ndcg
 
-# define contants
+# Hyper-Params
 ITERATIONS = 10000
-BATCH_SIZE = 1024
+BATCH_SIZE = 6185
 LR = 1e-3
 ITERS_PER_EVAL = 200
 ITERS_PER_LR_DECAY = 200
 K = 20
-LAMBDA = 1e-6
+LAMBDA = 1e-5
 
 # setup
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+real_device = 'cuda' if bgu_cluster else 'cpu'
+device = torch.device(real_device if torch.cuda.is_available() else 'cpu') # change to cude if run on cluster
 print(f"Using device {device}.")
 
 
@@ -416,6 +429,7 @@ train_sparse_edge_index = train_sparse_edge_index.to(device)
 val_edge_index = val_edge_index.to(device)
 val_sparse_edge_index = val_sparse_edge_index.to(device)
 
+
 # training loop
 train_losses = []
 val_losses = []
@@ -424,17 +438,12 @@ for iter in range(ITERATIONS):
     # forward propagation
     users_emb_final, users_emb_0, items_emb_final, items_emb_0 = model.forward(
         train_sparse_edge_index)
+    user_indices, pos_item_indices, neg_item_indices = sample_mini_batch(BATCH_SIZE, train_edge_index)
 
-    # mini batching
-    user_indices, pos_item_indices, neg_item_indices = sample_mini_batch(
-        BATCH_SIZE, train_edge_index)
-    user_indices, pos_item_indices, neg_item_indices = user_indices.to(
-        device), pos_item_indices.to(device), neg_item_indices.to(device)
+    user_indices, pos_item_indices, neg_item_indices = user_indices.to(device), pos_item_indices.to(device), neg_item_indices.to(device)
     users_emb_final, users_emb_0 = users_emb_final[user_indices], users_emb_0[user_indices]
-    pos_items_emb_final, pos_items_emb_0 = items_emb_final[
-        pos_item_indices], items_emb_0[pos_item_indices]
-    neg_items_emb_final, neg_items_emb_0 = items_emb_final[
-        neg_item_indices], items_emb_0[neg_item_indices]
+    pos_items_emb_final, pos_items_emb_0 = items_emb_final[pos_item_indices], items_emb_0[pos_item_indices]
+    neg_items_emb_final, neg_items_emb_0 = items_emb_final[neg_item_indices], items_emb_0[neg_item_indices]
 
     # loss computation
     train_loss = bpr_loss(users_emb_final, users_emb_0, pos_items_emb_final,
