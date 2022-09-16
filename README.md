@@ -5,10 +5,10 @@ In 2006 Netflix Lunch a competition with a prize of 1,000,000$ .
 The mission was to improve Netflix's Recommender system.
 
 ## My Approach
-In this project i'll levarage deep learning for building a recommender system with 
+In this project, I'll leverage deep learning for building a recommender system with 
 the dataset of the competition.
-Graph Neural Netwoks are showen to perform very well on missions like recomendation systems.
-I will use the [LightGCN](https://arxiv.org/abs/2002.02126) model (2020) for this mission
+Graph Neural Networks are shown to perform very well on missions like recommendation systems.
+I will use the [LightGCN](https://arxiv.org/abs/2002.02126) model (2020) for this mission.
 
 
 Instructions:
