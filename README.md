@@ -1,7 +1,7 @@
 # Netflix-Recommender
 
 ## About the project
-In 2006 Netflix Lunch a competition with a prize of 1,000,000$ .
+In 2006 Netflix launched a competition with a prize of 1,000,000$ .
 The mission was to improve Netflix's Recommender system.
 
 ## My Approach
