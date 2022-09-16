@@ -22,3 +22,10 @@ Requinment:
 2) torch 1.11.0
 3) pandas 1.4.3
 4) numpy 1.21.5
+5) PyG
+
+Several things that we learned in this project are:
+1) PyTorch Geometric - library for graph neural networks (PyG).
+2) Create a model that learn also with negative Samples.
+3) Graph Neural Nets and Graph machine learning.
+4) Stuff about recommendation systems like collaborative filtering and so on.
