@@ -13,9 +13,36 @@ from torch_geometric.nn.conv.gcn_conv import gcn_norm
 from torch_geometric.nn.conv import MessagePassing
 from torch_geometric.typing import Adj
 
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--cluster", type=bool, default=False, help="run on cluster")
+parser.add_argument('--batch_size', type=int, default=6185, help='input batch size for training (default: 128)')
+parser.add_argument('--iterations', type=int, default=10000, metavar='N', help='number of iteration to train')
+parser.add_argument('--lr', type=float, default=0.01, metavar='LR', help='learning rate (default: 0.1)')
+parser.add_argument('--ipe', type=int, default=200, metavar='N', help='iteration per eval')
+parser.add_argument('--iplrd', type=int, default=200, metavar='N', help='iteration per lr decay')
+parser.add_argument('--k', type=int, default=20, metavar='N', help='number of recommendation')
+parser.add_argument('--Lambda', type=int, default=1e-5, metavar='N', help='regularizaion lambda for loss')
+
+args = parser.parse_args()
+# todo: add argparse, run on cluster, use neptune
+
+# Hyper-Params
+ITERATIONS = args.iterations
+BATCH_SIZE = args.batch_size
+LR = args.lr
+ITERS_PER_EVAL = args.ipe
+ITERS_PER_LR_DECAY = args.iplrd
+K = args.k
+LAMBDA = args.Lambda
 
 dataset = 'Netflix'
 bgu_cluster = False
+print(args.cluster)
+if args.cluster:
+    bgu_cluster = True
+print(bgu_cluster)
 
 # MovieLens mission
 movie_path = './ml-latest-small/movies.csv'
@@ -401,14 +428,6 @@ def evaluation(model, edge_index, sparse_edge_index, exclude_edge_indices, k, la
         model, edge_index, exclude_edge_indices, k)
     return loss, recall, precision, ndcg
 
-# Hyper-Params
-ITERATIONS = 10000
-BATCH_SIZE = 6185
-LR = 1e-3
-ITERS_PER_EVAL = 200
-ITERS_PER_LR_DECAY = 200
-K = 20
-LAMBDA = 1e-5
 
 # setup
 real_device = 'cuda' if bgu_cluster else 'cpu'

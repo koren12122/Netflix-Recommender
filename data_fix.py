@@ -21,7 +21,7 @@ def fix_rating_template():
         new_file.write(str(curr_number) + ',' + line)
 
 # need to download https://www.kaggle.com/datasets/netflix-inc/netflix-prize-data?select=movie_titles.csv
-# movie list and delete all line expect first 4500
+# movie list and delete all lines expect first 4500
 
 def fix_movies_validation():
     file = open("movie_titles.csv", 'r')
