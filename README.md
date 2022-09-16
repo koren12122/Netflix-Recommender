@@ -8,7 +8,7 @@ The mission was to improve Netflix's Recommender system.
 In this project i'll levarage deep learning for building a recommender system with 
 the dataset of the competition.
 Graph Neural Netwoks are showen to perform very well on missions like recomendation systems.
-I will use the LightGCN model (2020) for this mission
+I will use the LightGCN model ([2020](https://arxiv.org/abs/2002.02126)) for this mission
 
 
 Instructions:
