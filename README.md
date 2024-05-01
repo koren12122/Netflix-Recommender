@@ -14,15 +14,19 @@ I will use the [LightGCN](https://arxiv.org/abs/2002.02126) model (2020) for thi
 3) run the script "data_fix.py".
 4) delete all lines except the first 4500 in the file "movie_titles.csv". 
 
-### Requirement:
-1) python 3.9
-2) torch 1.11.0
-3) pandas 1.4.3
-4) numpy 1.21.5
-5) PyG
+### Requirements
 
-### Several things that we learned in this project are:
-1) PyTorch Geometric - library for graph neural networks (PyG).
-2) Create a model that learn also with negative Samples.
+Ensure you have the following dependencies installed:
+
+1. Python 3.9
+2. Torch 1.11.0
+3. Pandas 1.4.3
+4. NumPy 1.21.5
+5. PyG
+
+
+### Several things that I learned in this project are:
+1) PyTorch Geometric - a library for graph neural networks (PyG).
+2) Creating a model that can learn with negative samples.
 3) Graph Neural Nets and Graph machine learning.
-4) Stuff about recommendation systems like collaborative filtering and so on.
+4) Information about recommendation systems, such as collaborative filtering, etc.
